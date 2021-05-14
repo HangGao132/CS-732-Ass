@@ -177,26 +177,60 @@ class KFolds:
         self.n_splits = n_splits
         
     def split(self, X):
-        n_samples = X.shape[0]
-        indices = np.arange(n_samples)
+        num_Of_Samples = X.shape[0]
+        indices = np.arange(num_Of_Samples)
         if self.shuffle:
-            rstate = np.random.RandomState(self.seed)
-            rstate.shuffle(indices)
+            random_State = np.random.RandomState(self.seed)
+            random_State.shuffle(indices)
 
-        for test_mask in self._iter_test_masks(n_samples, indices):
+        for test_mask in self._iter_test_masks(num_Of_Samples, indices):
             train_index = indices[np.logical_not(test_mask)]
             test_index = indices[test_mask]
             yield train_index, test_index
         
-    def _iter_test_masks(self, n_samples, indices):
-        fold_sizes = (n_samples // self.n_splits) * np.ones(self.n_splits, dtype = np.int)
-        fold_sizes[:n_samples % self.n_splits] += 1
+    def _iter_test_masks(self, num_Of_Samples, indices):
+        fold_sizes = (num_Of_Samples // self.n_splits) * np.ones(self.n_splits, dtype = np.int)
+        fold_sizes[:num_Of_Samples % self.n_splits] += 1
 
         current = 0
         for fold_size in fold_sizes:
             start, stop = current, current + fold_size
             test_indices = indices[start:stop]
-            test_mask = np.zeros(n_samples, dtype = np.bool)
+            test_mask = np.zeros(num_Of_Samples, dtype = np.bool)
+            test_mask[test_indices] = True
+            yield test_mask
+            current = stop
+
+
+
+class KFolds:
+    def __init__(self, n_splits, shuffle = True, seed = 4321):
+        self.seed = seed
+        self.shuffle = shuffle
+        self.n_splits = n_splits
+    # iterable split function, call it in a for loop and it will iter each train and validation
+    def split(self, X):
+        num_Of_Samples = X.shape[0]
+        indices = np.arange(num_Of_Samples)
+        if self.shuffle:
+            random_State = np.random.RandomState(self.seed)
+            random_State.shuffle(indices)
+        for test_mask in self._iter_test_masks(num_Of_Samples, indices):
+            train_index = indices[np.logical_not(test_mask)]
+            test_index = indices[test_mask]
+            train_set = X.filter(train_index, axis = 0)
+            test_set = X.filter(test_index, axis = 0)
+            yield train_set, test_set
+        
+    def _iter_test_masks(self, num_Of_Samples, indices):
+        fold_sizes = (num_Of_Samples // self.n_splits) * np.ones(self.n_splits, dtype = np.int64)
+        fold_sizes[:num_Of_Samples % self.n_splits] += 1
+
+        current = 0
+        for fold_size in fold_sizes:
+            start, stop = current, current + fold_size
+            test_indices = indices[start:stop]
+            test_mask = np.zeros(num_Of_Samples, dtype = bool)
             test_mask[test_indices] = True
             yield test_mask
             current = stop
